@@ -170,6 +170,14 @@ const seedImages: Record<string, string[]> = {
   "phool-sling-bag": ["/products/phool-sling-bag-1.webp"],
   "sunshine-tote": ["/products/sunshine-tote-1.webp"],
   "granny-bucket-hat": ["/products/granny-bucket-hat-1.webp"],
+  // Aipan — free-to-use reference photos (Wikimedia Commons). Replace with your own shots from the admin panel.
+  "lakshmi-pagle-puja-thali": ["/products/lakshmi-pagle-puja-thali-1.webp"],
+  "kalash-kamal-chowki": ["/products/kalash-kamal-chowki-1.webp"],
+  "shiv-shakti-wall-frame": ["/products/shiv-shakti-wall-frame-1.webp"],
+  "aipan-nameplate": ["/products/aipan-nameplate-1.webp"],
+  "aipan-coaster-set": ["/products/aipan-coaster-set-1.webp"],
+  "karwa-chauth-thali-set": ["/products/karwa-chauth-thali-set-1.webp"],
+  "vasudhara-diya-set": ["/products/vasudhara-diya-set-1.webp"],
 };
 
 async function main() {
