@@ -159,6 +159,19 @@ const products: Seed[] = [
   },
 ];
 
+// Real product photos (in /public/products). New installs get them automatically.
+const seedImages: Record<string, string[]> = {
+  "himal-rib-beanie": ["/products/himal-rib-beanie-1.webp", "/products/himal-rib-beanie-2.webp"],
+  "deodar-stripe-beanie": ["/products/deodar-stripe-beanie-1.webp"],
+  "midnight-rib-scarf": ["/products/midnight-rib-scarf-1.webp"],
+  "sindoor-long-scarf": ["/products/sindoor-long-scarf-1.webp"],
+  "dil-granny-tote": ["/products/dil-granny-tote-1.webp"],
+  "panda-bag-charm": ["/products/panda-bag-charm-1.webp"],
+  "phool-sling-bag": ["/products/phool-sling-bag-1.webp"],
+  "sunshine-tote": ["/products/sunshine-tote-1.webp"],
+  "granny-bucket-hat": ["/products/granny-bucket-hat-1.webp"],
+};
+
 async function main() {
   const catIds = new Map<string, string>();
   for (const c of categories) {
@@ -168,7 +181,7 @@ async function main() {
 
   for (const p of products) {
     const { cat, variants, ...rest } = p;
-    const data = { ...rest, categoryId: catIds.get(cat)!, status: "ACTIVE" as const, images: [] as string[], stock: rest.stock ?? 0 };
+    const data = { ...rest, categoryId: catIds.get(cat)!, status: "ACTIVE" as const, images: seedImages[p.slug] ?? [], stock: rest.stock ?? 0 };
     const existing = await prisma.product.findUnique({ where: { slug: p.slug } });
     if (existing) continue; // never clobber the owner's edits
     await prisma.product.create({
