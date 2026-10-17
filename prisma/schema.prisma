@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+/// The two crafts the studio makes. Drives navigation, colour and copy.
+enum World {
+  AIPAN
+  CROCHET
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CRAFTING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id           String         @id @default(cuid())
+  name         String?
+  email        String         @unique
+  phone        String?
+  passwordHash String?
+  role         Role           @default(CUSTOMER)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  addresses    Address[]
+  orders       Order[]
+  reviews      Review[]
+  wishlist     WishlistItem[]
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  phone     String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  world       World
+  description String?
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  products    Product[]
+
+  @@index([world, sortOrder])
+}
+
+model Product {
+  id                 String           @id @default(cuid())
+  categoryId         String
+  world              World
+  name               String
+  slug               String           @unique
+  sku                String           @unique
+  tagline            String?
+  description        String
+  /// A first-person note from the maker shown on the product page.
+  makerNote          String?
+  materials          String?
+  care               String?
+  dimensions         String?
+  /// Prices are whole rupees, GST inclusive.
+  price              Int
+  compareAtPrice     Int?
+  images             String[]         @default([])
+  /// Hex colour used for the hand-drawn fallback art when no photo is uploaded.
+  swatch             String           @default("#9B2D20")
+  stock              Int              @default(0)
+  lowStockAt         Int              @default(2)
+  /// Made-to-order pieces can be bought even when stock is 0.
+  madeToOrder        Boolean          @default(false)
+  leadTimeDays       Int?
+  customizable       Boolean          @default(false)
+  customizationLabel String?
+  featured           Boolean          @default(false)
+  status             ProductStatus    @default(DRAFT)
+  weightGrams        Int?
+  salesCount         Int              @default(0)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  category           Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants           ProductVariant[]
+  orderItems         OrderItem[]
+  reviews            Review[]
+  wishlistedBy       WishlistItem[]
+  inventoryLogs      InventoryLog[]
+
+  @@index([world, status])
+  @@index([categoryId])
+}
+
+model ProductVariant {
+  id        String         @id @default(cuid())
+  productId String
+  label     String
+  colorHex  String?
+  sku       String         @unique
+  /// Overrides product price when set.
+  price     Int?
+  stock     Int            @default(0)
+  sortOrder Int            @default(0)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  inventoryLogs InventoryLog[]
+
+  @@index([productId])
+}
+
+model InventoryLog {
+  id        String          @id @default(cuid())
+  productId String
+  variantId String?
+  delta     Int
+  reason    String
+  reference String?
+  createdAt DateTime        @default(now())
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  orderNumber       String        @unique
+  /// Secret handed to the buyer so guests can view their own order.
+  accessToken       String        @unique
+  userId            String?
+  email             String
+  phone             String
+  name              String
+  shippingAddress   Json
+  status            OrderStatus   @default(PENDING)
+  paymentStatus     PaymentStatus @default(PENDING)
+  subtotal          Int
+  discount          Int           @default(0)
+  shippingFee       Int           @default(0)
+  giftWrapFee       Int           @default(0)
+  total             Int
+  couponCode        String?
+  giftNote          String?
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?
+  stockCommitted    Boolean       @default(false)
+  /// Set when payment succeeded but stock could not be fully reserved.
+  needsAttention    String?
+  courier           String?
+  trackingNumber    String?
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  user              User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items             OrderItem[]
+  events            OrderEvent[]
+
+  @@index([userId])
+  @@index([email])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id            String          @id @default(cuid())
+  orderId       String
+  productId     String
+  variantId     String?
+  name          String
+  variantLabel  String?
+  image         String?
+  unitPrice     Int
+  quantity      Int
+  customization String?
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product       Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant       ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model Coupon {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  description  String?
+  /// "PERCENT" or "FLAT"
+  type         String
+  value        Int
+  minimumOrder Int?
+  maxDiscount  Int?
+  usageLimit   Int?
+  usedCount    Int       @default(0)
+  expiresAt    DateTime?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  rating    Int
+  body      String
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId, approved])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+/// Razorpay webhook idempotency.
+model WebhookEvent {
+  id        String   @id
+  event     String
+  createdAt DateTime @default(now())
+}
